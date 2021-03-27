@@ -17,6 +17,8 @@ class PassMan():
 
         # initializing important instance variable
         self.BASE_URL = "http://localhost:8000/"
+        self.ENDPOINT = "api/user/"
+        self.ACCOUNT_ENDPOINT  = "api/account"
         self.hidden = True
         self.counter = self.pk =0
         
@@ -151,13 +153,17 @@ class PassMan():
         # entry box in manager tab
         email_entry = tk.Entry(self.manager_tab_login,width=30,textvariable=self.email,font=("helvitika",15,"bold"))
         email_entry.place(x=34,y=125)
+        email_entry.focus()
 
         self.password_entry = tk.Entry(self.manager_tab_login,width=30,textvariable=self.password,font=("helvitika",15,"bold"),show="*")
         self.password_entry.place(x=34,y=195)
+        self.password_entry.bind("<Return>",self.login_functionality)
+
 
         # checkbox
         remember_me_checkbox = tk.Checkbutton(self.manager_tab_login,text="Remember Me",variable=self.remember_me, offvalue=0, onvalue=1,font=("verdana",10))
         remember_me_checkbox.place(x=31,y=240)
+
 
         # login button
         login_button = tk.Button(self.manager_tab_login,text="LOGIN", bg="blue",fg="white",command=self.login_functionality,font=("verdana",14))
@@ -348,7 +354,7 @@ class PassMan():
                 m_box.showerror("error","password not matched !")
             else:
                 # write the logic here further
-                response = requests.post(self.BASE_URL+"signup/",data=json.dumps({"name":self.name.get(),"email":self.email.get(),"master_key":self.password.get()}))
+                response = requests.post(self.BASE_URL+self.ACCOUNT_ENDPOINT,data=json.dumps({"name":self.name.get(),"email":self.email.get(),"master_key":self.password.get()}))
                 if response.status_code == 200:
                     m_box.showinfo("success","accounts successfully created, Login to Enjoy the features")
                     self.login()
@@ -359,16 +365,17 @@ class PassMan():
             m_box.showerror("error","fill the form completely")
 
     # business logic for login
-    def login_functionality(self):
+    def login_functionality(self,event=None):
         if  self.email.get() ==  "" or  self.password.get() ==  "":
             m_box.showerror("error","fill the form correctly")
         else:
             if not re.match(r"[^@]+@[^@]+\.[^@]+", self.email.get()):
                 m_box.showerror("error","invalid email  !")
                 return None
-            response = requests.get(self.BASE_URL+"signup/",data=json.dumps({"email":self.email.get(),"master_key":self.password.get()}))
+            response = requests.get(self.BASE_URL+self.ACCOUNT_ENDPOINT,data=json.dumps({"email":self.email.get(),"master_key":self.password.get()}))
             if response.status_code == 200:
-                response = requests.get(self.BASE_URL+"api/"+self.email.get()+"/"+self.password.get())        
+                creds = {"email":self.email.get(),"password":self.password.get()}      
+                response = requests.get(self.BASE_URL+self.ENDPOINT,data=json.dumps(creds))        
                 self.password_manager(response.json())
             else:
                 m_box.showerror("error","user id or password is incorrect !")
@@ -411,8 +418,8 @@ class PassMan():
     # business logic to update the user creds
     def update_data(self):
         selected = self.tree.focus()
-        creds = {"username":self.dml_email.get(),"password":self.dml_password.get(),"website":self.dml_website.get()}
-        response = requests.put(self.BASE_URL+"api/"+self.email.get()+"/"+self.password.get()+"/"+str(selected), data=json.dumps(creds))
+        creds = {"email":self.email.get(),"password":self.password.get(),"cred_user":self.dml_email.get(),"cred_password":self.dml_password.get(),"cred_website":self.dml_website.get(), "id":selected}
+        response = requests.put(self.BASE_URL+self.ENDPOINT, data=json.dumps(creds))
         print(response.status_code)
         if response.status_code == 200:
             self.tree.item(selected,text="",values=(self.dml_website.get(),self.dml_email.get(),self.dml_password.get()))
@@ -422,10 +429,10 @@ class PassMan():
 
     # business logic to delete the user creds
     def delete_data(self):    
-        data = self.tree.selection()[0]
-        response = requests.delete(self.BASE_URL+"api/"+self.email.get()+"/"+self.password.get()+"/"+str(data))
+        data = {"email":self.email.get(),"password":self.password.get(),"id":self.tree.selection()[0]}
+        response = requests.delete(self.BASE_URL+self.ENDPOINT,data=json.dumps(data))
         if response.status_code ==200:
-            self.tree.delete(data)
+            self.tree.delete(self.tree.selection()[0])
             self.clean_cred_form()
         else:
             m_box.showerror("error","something went wrong")
@@ -433,8 +440,8 @@ class PassMan():
 
     # business logic to insert the user creds
     def insert_data(self):
-        creds = {"username":self.dml_email.get(),"password":self.dml_password.get(),"website":self.dml_website.get()}
-        response = requests.post(self.BASE_URL+"api/"+self.email.get()+"/"+self.password.get(), data=json.dumps(creds))
+        creds = {"email":self.email.get(),"password":self.password.get(),"cred_user":self.dml_email.get(),"cred_password":self.dml_password.get(),"cred_website":self.dml_website.get()}
+        response = requests.post(self.BASE_URL+self.ENDPOINT,data=json.dumps(creds))
         if response.status_code ==200:
             self.pk+=1
             if self.counter %2==0:
